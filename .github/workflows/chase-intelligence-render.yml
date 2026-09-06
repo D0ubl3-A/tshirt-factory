@@ -1,0 +1,35 @@
+name: Chase Intelligence Render
+on:
+  push:
+    paths:
+      - ".github/workflows/chase-intelligence-render.yml"
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install FFmpeg
+        run: sudo apt-get update -y && sudo apt-get install -y ffmpeg
+      - name: Download source and narration
+        run: |
+          curl -L --fail --retry 5 --retry-delay 2 "https://northarknow-api-t3ngwy6mea-ue.a.run.app/media/articles/1373.mp4?download=true" -o source.mp4
+          curl -L --fail --retry 5 --retry-delay 2 "https://storage.googleapis.com/adm--audio-playback--7d--public/mcp-preview/d4c141cf-f454-4ef9-83ac-b4d6a3ea1d68.mp3" -o narration.mp3
+          ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1 source.mp4
+          ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1 narration.mp3
+      - name: Render branded episode
+        run: |
+          ffmpeg -y -i source.mp4 -i narration.mp3 \
+            -filter_complex "[0:a]volume=0.16[a0];[1:a]volume=1.0[a1];[a0][a1]amix=inputs=2:duration=first:dropout_transition=2[a]" \
+            -vf "drawbox=x=0:y=0:w=iw:h=170:color=black@0.55:t=fill:enable='between(t,0,4)',drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='CHASE INTELLIGENCE':fontcolor=white:fontsize=58:x=(w-text_w)/2:y=28:enable='between(t,0,4)',drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='REAL PURSUITS. FULL INTELLIGENCE.':fontcolor=white:fontsize=26:x=(w-text_w)/2:y=96:enable='between(t,0,4)',drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='CHANNEL POWERED BY iLLCo-AI':fontcolor=white:fontsize=18:x=(w-text_w)/2:y=132:enable='between(t,0,4)',drawbox=x=20:y=18:w=410:h=105:color=black@0.48:t=fill,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='CHASE INTELLIGENCE':fontcolor=white:fontsize=26:x=34:y=30,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='Real Pursuits. Full Intelligence.':fontcolor=white:fontsize=15:x=34:y=62,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='CHANNEL POWERED BY iLLCo-AI':fontcolor=white:fontsize=13:x=34:y=88,drawbox=x=0:y=0:w=iw:h=ih:color=black@0.72:t=fill:enable='between(t,146,154.2)',drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='CHASE INTELLIGENCE':fontcolor=white:fontsize=64:x=(w-text_w)/2:y=(h-text_h)/2-70:enable='between(t,146,154.2)',drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='REAL PURSUITS. FULL INTELLIGENCE.':fontcolor=white:fontsize=28:x=(w-text_w)/2:y=(h-text_h)/2+5:enable='between(t,146,154.2)',drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='CHANNEL POWERED BY iLLCo-AI':fontcolor=white:fontsize=20:x=(w-text_w)/2:y=(h-text_h)/2+50:enable='between(t,146,154.2)',drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='SUBSCRIBE':fontcolor=white:fontsize=30:x=(w-text_w)/2:y=(h-text_h)/2+95:enable='between(t,146,154.2)'" \
+            -map 0:v:0 -map "[a]" \
+            -c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p \
+            -c:a aac -b:a 192k -movflags +faststart \
+            Chase_Intelligence_Arkansas_I40_BRANDED_FINAL.mp4
+      - name: Verify output
+        run: |
+          ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 Chase_Intelligence_Arkansas_I40_BRANDED_FINAL.mp4
+      - name: Upload final MP4
+        uses: actions/upload-artifact@v4
+        with:
+          name: Chase_Intelligence_Arkansas_I40_BRANDED_FINAL
+          path: Chase_Intelligence_Arkansas_I40_BRANDED_FINAL.mp4
+          retention-days: 1
